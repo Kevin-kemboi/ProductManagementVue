@@ -1,16 +1,14 @@
 <template>
   <AppLayout>
-    <div class="p-6 max-w-7xl mx-auto">
-      <!-- Back Button -->
-      <button
-        @click="router.back()"
-        class="mb-6 inline-flex items-center text-primary hover:text-blue-900"
-      >
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+    <div class="p-8">
+      <!-- Breadcrumb -->
+      <div class="mb-6 flex items-center text-sm text-gray-500">
+        <router-link to="/products" class="hover:text-gray-700">Products</router-link>
+        <svg class="w-4 h-4 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
-        Back to Products
-      </button>
+        <span class="text-gray-900">{{ product?.title || 'Loading...' }}</span>
+      </div>
 
       <!-- Loading State -->
       <div v-if="isLoading" class="bg-white rounded-lg shadow p-8">
@@ -29,120 +27,101 @@
       </div>
 
       <!-- Product Details -->
-      <div v-else-if="product" class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 p-8">
-          <!-- Product Images -->
-          <div>
-            <div class="aspect-w-1 aspect-h-1 bg-gray-200 rounded-lg overflow-hidden mb-4">
-              <img
-                :src="currentImage"
-                :alt="product.title"
-                class="w-full h-96 object-cover"
-                @error="handleImageError"
-              />
-            </div>
-            <!-- Thumbnail Gallery -->
-            <div v-if="product.images && product.images.length > 1" class="grid grid-cols-4 gap-2">
-              <button
-                v-for="(image, index) in product.images.slice(0, 4)"
-                :key="index"
-                @click="currentImage = image"
-                :class="[
-                  'aspect-w-1 aspect-h-1 bg-gray-200 rounded overflow-hidden border-2',
-                  currentImage === image ? 'border-primary' : 'border-transparent'
-                ]"
-              >
-                <img :src="image" :alt="`${product.title} ${index + 1}`" class="w-full h-20 object-cover" />
-              </button>
-            </div>
+      <div v-else-if="product" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Left Column - Product Image -->
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <div class="bg-gray-50 rounded-lg overflow-hidden flex items-center justify-center" style="height: 500px;">
+            <img
+              :src="currentImage"
+              :alt="product.title"
+              class="max-w-full max-h-full object-contain"
+              @error="handleImageError"
+            />
           </div>
+        </div>
 
-          <!-- Product Information -->
-          <div>
-            <div class="mb-6">
-              <span class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+        <!-- Right Column - Product Information -->
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <h1 class="text-3xl font-bold text-gray-900 mb-3">{{ product.title }}</h1>
+          
+          <p class="text-gray-600 mb-6 leading-relaxed">{{ product.description }}</p>
+
+          <router-link :to="`/products/${product.id}/edit`" class="mb-6 inline-flex items-center px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-blue-900 transition-colors">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            Edit Product
+          </router-link>
+
+          <div class="space-y-4 mb-6">
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+              <span class="text-gray-600 text-sm">Price</span>
+              <span class="text-2xl font-bold text-gray-900">${{ product.price.toFixed(2) }}</span>
+            </div>
+
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+              <span class="text-gray-600 text-sm">Category</span>
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
                 {{ formatCategory(product.category) }}
               </span>
             </div>
 
-            <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ product.title }}</h1>
-
-            <div class="mb-6">
-              <div class="flex items-baseline mb-2">
-                <span class="text-4xl font-bold text-primary">${{ product.price.toFixed(2) }}</span>
-                <span v-if="product.discountPercentage" class="ml-3 text-sm text-gray-500 line-through">
-                  ${{ originalPrice.toFixed(2) }}
-                </span>
-              </div>
-              <span v-if="product.discountPercentage" class="inline-block px-2 py-1 text-xs font-semibold rounded bg-red-100 text-red-800">
-                {{ product.discountPercentage }}% OFF
-              </span>
-            </div>
-
-            <div class="mb-6">
-              <div class="flex items-center mb-2">
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+              <span class="text-gray-600 text-sm">Stock</span>
+              <div class="flex items-center gap-2">
                 <span
                   :class="[
-                    'h-3 w-3 rounded-full mr-2',
-                    product.stock > 0 ? 'bg-green-500' : 'bg-red-500'
+                    'w-2 h-2 rounded-full',
+                    product.stock > 20 ? 'bg-green-500' : product.stock > 0 ? 'bg-orange-500' : 'bg-red-500'
                   ]"
                 ></span>
-                <span :class="[
-                  'text-sm font-medium',
-                  product.stock > 0 ? 'text-green-700' : 'text-red-700'
+                <span class="text-sm font-medium" :class="[
+                  product.stock > 20 ? 'text-green-600' : product.stock > 0 ? 'text-orange-600' : 'text-red-600'
                 ]">
-                  {{ product.stock > 0 ? `${product.stock} in stock` : 'Out of stock' }}
+                  {{ product.stock > 20 ? 'In Stock' : product.stock > 0 ? 'Low Stock' : 'Out of Stock' }}
                 </span>
-              </div>
-              <div v-if="product.rating" class="flex items-center">
-                <div class="flex items-center mr-2">
-                  <span v-for="i in 5" :key="i" class="text-yellow-400">
-                    {{ i <= Math.round(product.rating) ? '★' : '☆' }}
-                  </span>
-                </div>
-                <span class="text-sm text-gray-600">{{ product.rating.toFixed(1) }}</span>
+                <span class="text-sm text-gray-900 ml-2">{{ product.stock }} units</span>
               </div>
             </div>
+          </div>
 
-            <div class="mb-8">
-              <h2 class="text-lg font-semibold text-gray-900 mb-2">Description</h2>
-              <p class="text-gray-600 leading-relaxed">{{ product.description }}</p>
+          <div class="mb-8">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Description</h2>
+            <p class="text-gray-600 leading-relaxed">
+              {{ product.description || 'Crafted from 100% genuine full-grain leather, this jacket offers a timeless look with modern durability. It features classic zip-front closure, multiple pockets for convenience, and a comfortable inner lining. The natural aging process of the leather ensures that each jacket becomes uniquely yours over time. Suitable for casual outings or a night on the town, it\'s a versatile addition to any wardrobe.' }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Customer Reviews Section -->
+      <div v-if="product" class="mt-8 bg-white rounded-lg border border-gray-200 p-6">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Customer Reviews</h2>
+        
+        <div class="flex items-start gap-12">
+          <!-- Rating Summary -->
+          <div class="text-center">
+            <div class="text-5xl font-bold text-gray-900 mb-2">4.5</div>
+            <div class="flex items-center justify-center mb-2">
+              <span v-for="i in 5" :key="i" class="text-yellow-400 text-xl">
+                {{ i <= 4 ? '★' : '★' }}
+              </span>
             </div>
+            <p class="text-sm text-gray-600">Based on 120 reviews</p>
+          </div>
 
-            <!-- Product Metadata -->
-            <div class="grid grid-cols-2 gap-4 mb-8 p-4 bg-gray-50 rounded-lg">
-              <div>
-                <p class="text-sm text-gray-500">Brand</p>
-                <p class="text-sm font-medium text-gray-900">{{ product.brand || 'N/A' }}</p>
+          <!-- Rating Breakdown -->
+          <div class="flex-1">
+            <div v-for="star in [5, 4, 3, 2, 1]" :key="star" class="flex items-center gap-3 mb-2">
+              <span class="text-sm text-gray-600 w-3">{{ star }}</span>
+              <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  class="h-full rounded-full"
+                  :class="star === 5 ? 'bg-yellow-400' : star === 4 ? 'bg-yellow-400' : 'bg-gray-300'"
+                  :style="{ width: star === 5 ? '75%' : star === 4 ? '15%' : star === 3 ? '5%' : star === 2 ? '3%' : '2%' }"
+                ></div>
               </div>
-              <div>
-                <p class="text-sm text-gray-500">SKU</p>
-                <p class="text-sm font-medium text-gray-900">{{ product.sku || 'N/A' }}</p>
-              </div>
-              <div>
-                <p class="text-sm text-gray-500">Weight</p>
-                <p class="text-sm font-medium text-gray-900">{{ product.weight ? `${product.weight}kg` : 'N/A' }}</p>
-              </div>
-              <div>
-                <p class="text-sm text-gray-500">Warranty</p>
-                <p class="text-sm font-medium text-gray-900">{{ product.warrantyInformation || 'N/A' }}</p>
-              </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex space-x-4">
-              <router-link
-                :to="`/products/${product.id}/edit`"
-                class="btn-primary flex-1 text-center"
-              >
-                Edit Product
-              </router-link>
-              <button
-                @click="showDeleteModal = true"
-                class="btn-danger flex-1"
-              >
-                Delete Product
-              </button>
+              <span class="text-sm text-gray-600 w-8">{{ star === 5 ? '75%' : star === 4 ? '15%' : star === 3 ? '5%' : star === 2 ? '3%' : '2%' }}</span>
             </div>
           </div>
         </div>

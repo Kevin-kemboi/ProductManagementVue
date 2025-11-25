@@ -157,28 +157,79 @@
             </div>
           </div>
 
-          <!-- Thumbnail URL -->
+          <!-- Product Image Upload -->
           <div>
-            <label for="thumbnail" class="block text-sm font-medium text-gray-700 mb-2">
-              Thumbnail URL
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Product Image
             </label>
-            <input
-              id="thumbnail"
-              v-model="formData.thumbnail"
-              type="url"
-              class="input-field"
-              placeholder="https://example.com/image.jpg"
-            />
-            
-            <!-- Image Preview -->
-            <div v-if="formData.thumbnail" class="mt-4">
-              <p class="text-sm font-medium text-gray-700 mb-2">Preview:</p>
-              <img
-                :src="formData.thumbnail"
-                alt="Thumbnail preview"
-                class="h-32 w-32 object-cover rounded border border-gray-300"
-                @error="handleImageError"
-              />
+            <div 
+              @dragover.prevent="isDragging = true"
+              @dragleave.prevent="isDragging = false"
+              @drop.prevent="handleFileDrop"
+              :class="[
+                'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
+                isDragging ? 'border-primary bg-blue-50' : 'border-gray-300'
+              ]"
+            >
+              <div v-if="!imagePreview" class="flex flex-col items-center">
+                <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                  <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                </div>
+                <p class="text-sm text-gray-600 mb-1">
+                  <label for="file-upload-edit" class="text-primary hover:text-blue-900 cursor-pointer font-medium">
+                    Click to upload
+                  </label>
+                  <span> or drag and drop</span>
+                </p>
+                <p class="text-xs text-gray-500 mb-3">PNG, JPG, GIF (MAX. 5MB)</p>
+                
+                <input
+                  id="file-upload-edit"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  @change="handleFileSelect"
+                  ref="fileInput"
+                />
+                
+                <div class="mt-3 w-full max-w-md">
+                  <input
+                    v-model="imageUrl"
+                    type="url"
+                    placeholder="Or paste image URL"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    @input="handleUrlInput"
+                  />
+                </div>
+              </div>
+              
+              <div v-else class="space-y-3">
+                <div class="relative inline-block">
+                  <img
+                    :src="imagePreview"
+                    alt="Product preview"
+                    class="mx-auto max-h-48 rounded-lg border border-gray-300"
+                  />
+                  <button
+                    type="button"
+                    @click="removeImage"
+                    class="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  @click="changeImage"
+                  class="text-sm text-primary hover:text-blue-900 font-medium"
+                >
+                  Change Image
+                </button>
+              </div>
             </div>
           </div>
 
@@ -253,6 +304,12 @@ const formError = ref(null);
 const categories = ref([]);
 const productId = ref(null);
 
+// Image upload state
+const imagePreview = ref(null);
+const imageUrl = ref('');
+const isDragging = ref(false);
+const fileInput = ref(null);
+
 // Form data
 const formData = reactive({
   title: '',
@@ -297,6 +354,11 @@ const loadProduct = async () => {
     formData.category = product.category || '';
     formData.brand = product.brand || '';
     formData.thumbnail = product.thumbnail || '';
+    
+    // Set image preview if thumbnail exists
+    if (product.thumbnail) {
+      imagePreview.value = product.thumbnail;
+    }
 
     // Update document title
     document.title = `Edit ${product.title} - Product App`;
@@ -441,5 +503,93 @@ const formatCategory = (category) => {
  */
 const handleImageError = (e) => {
   e.target.src = 'https://via.placeholder.com/150?text=Invalid+URL';
+};
+
+/**
+ * Handle file selection from input
+ */
+const handleFileSelect = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    processImageFile(file);
+  }
+};
+
+/**
+ * Handle file drop
+ */
+const handleFileDrop = (event) => {
+  isDragging.value = false;
+  const file = event.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    processImageFile(file);
+  } else {
+    toast.error('Please drop a valid image file');
+  }
+};
+
+/**
+ * Process and validate image file
+ */
+const processImageFile = (file) => {
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    toast.error('Image size must be less than 5MB');
+    return;
+  }
+
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml'];
+  if (!validTypes.includes(file.type)) {
+    toast.error('Please upload a valid image file (JPG, PNG, GIF, or SVG)');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    imagePreview.value = e.target.result;
+    formData.thumbnail = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+/**
+ * Handle URL input
+ */
+const handleUrlInput = () => {
+  if (imageUrl.value && isValidUrl(imageUrl.value)) {
+    imagePreview.value = imageUrl.value;
+    formData.thumbnail = imageUrl.value;
+  }
+};
+
+/**
+ * Validate URL
+ */
+const isValidUrl = (string) => {
+  try {
+    new URL(string);
+    return true;
+  } catch (_) {
+    return false;
+  }
+};
+
+/**
+ * Remove uploaded image
+ */
+const removeImage = () => {
+  imagePreview.value = null;
+  imageUrl.value = '';
+  formData.thumbnail = '';
+  if (fileInput.value) {
+    fileInput.value.value = '';
+  }
+};
+
+/**
+ * Change image
+ */
+const changeImage = () => {
+  removeImage();
 };
 </script>

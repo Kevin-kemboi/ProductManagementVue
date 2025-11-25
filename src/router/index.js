@@ -12,6 +12,15 @@ const routes = [
     },
   },
   {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: () => import('@/features/dashboard/DashboardPage.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Dashboard - Product App',
+    },
+  },
+  {
     path: '/products',
     name: 'Products',
     component: () => import('@/features/products/ProductListPage.vue'),
@@ -48,12 +57,57 @@ const routes = [
     },
   },
   {
+    path: '/orders',
+    name: 'Orders',
+    component: () => import('@/features/orders/OrdersPage.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Orders - Product App',
+    },
+  },
+  {
+    path: '/customers',
+    name: 'Customers',
+    component: () => import('@/features/customers/CustomersPage.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Customers - Product App',
+    },
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('@/features/settings/SettingsPage.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Settings - Product App',
+    },
+  },
+  {
+    path: '/activity',
+    name: 'ActivityLog',
+    component: () => import('@/features/activity/ActivityLogPage.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Activity Log - Product App',
+    },
+  },
+  {
+    path: '/alerts',
+    name: 'StockAlerts',
+    component: () => import('@/features/alerts/StockAlertsPage.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Stock Alerts - Product App',
+    },
+  },
+  {
     path: '/',
-    redirect: '/products',
+    redirect: '/dashboard',
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/products',
+    redirect: '/dashboard',
   },
 ];
 

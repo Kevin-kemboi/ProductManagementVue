@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia';
 import apiClient from '@/api/axios';
+import { useActivityStore } from './activityStore';
+import { useNotificationStore } from './notificationStore';
 
 /**
  * Product Store
@@ -79,6 +81,10 @@ export const useProductStore = defineStore('product', {
         this.products = response.data.products || [];
         this.totalProducts = response.data.total || 0;
 
+        // Check stock levels after loading products
+        const notificationStore = useNotificationStore();
+        notificationStore.checkStockLevels();
+
         return response.data;
       } catch (error) {
         this.error = error.userMessage || 'Failed to fetch products.';
@@ -135,6 +141,23 @@ export const useProductStore = defineStore('product', {
         this.products.unshift(newProduct);
         this.totalProducts += 1;
 
+        // Log activity
+        const activityStore = useActivityStore();
+        activityStore.logActivity({
+          action: 'created',
+          productId: newProduct.id,
+          productTitle: newProduct.title,
+          changes: {
+            price: newProduct.price,
+            stock: newProduct.stock,
+            category: newProduct.category,
+          }
+        });
+
+        // Check stock levels
+        const notificationStore = useNotificationStore();
+        notificationStore.checkStockLevels();
+
         return newProduct;
       } catch (error) {
         this.error = error.userMessage || 'Failed to add product.';
@@ -155,6 +178,9 @@ export const useProductStore = defineStore('product', {
       this.error = null;
 
       try {
+        // Get old product data for change tracking
+        const oldProduct = this.getProductById(id);
+        
         const response = await apiClient.put(`/products/${id}`, payload);
         
         const updatedProduct = response.data;
@@ -169,6 +195,28 @@ export const useProductStore = defineStore('product', {
         if (this.currentProduct && this.currentProduct.id === parseInt(id)) {
           this.currentProduct = updatedProduct;
         }
+
+        // Log activity with changes
+        const activityStore = useActivityStore();
+        const changes = {};
+        
+        if (oldProduct) {
+          if (oldProduct.title !== updatedProduct.title) changes.title = { from: oldProduct.title, to: updatedProduct.title };
+          if (oldProduct.price !== updatedProduct.price) changes.price = { from: oldProduct.price, to: updatedProduct.price };
+          if (oldProduct.stock !== updatedProduct.stock) changes.stock = { from: oldProduct.stock, to: updatedProduct.stock };
+          if (oldProduct.category !== updatedProduct.category) changes.category = { from: oldProduct.category, to: updatedProduct.category };
+        }
+
+        activityStore.logActivity({
+          action: 'updated',
+          productId: updatedProduct.id,
+          productTitle: updatedProduct.title,
+          changes: Object.keys(changes).length > 0 ? changes : null
+        });
+
+        // Check stock levels
+        const notificationStore = useNotificationStore();
+        notificationStore.checkStockLevels();
 
         return updatedProduct;
       } catch (error) {
@@ -189,6 +237,9 @@ export const useProductStore = defineStore('product', {
       this.error = null;
 
       try {
+        // Get product data before deletion
+        const product = this.getProductById(id);
+        
         await apiClient.delete(`/products/${id}`);
 
         // Remove the product from the products array
@@ -199,6 +250,19 @@ export const useProductStore = defineStore('product', {
         if (this.currentProduct && this.currentProduct.id === parseInt(id)) {
           this.currentProduct = null;
         }
+
+        // Log activity
+        const activityStore = useActivityStore();
+        activityStore.logActivity({
+          action: 'deleted',
+          productId: id,
+          productTitle: product?.title || 'Unknown Product',
+          changes: {
+            deletedAt: new Date().toISOString(),
+            price: product?.price,
+            stock: product?.stock
+          }
+        });
       } catch (error) {
         this.error = error.userMessage || 'Failed to delete product.';
         throw error;
